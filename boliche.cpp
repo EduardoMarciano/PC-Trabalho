@@ -6,9 +6,9 @@
 #include <unistd.h>
 #include <semaphore.h>
 
-#define NumeroPistas 12
-#define NumeroCadeiras 10
-#define NumeroClientes 100
+#define NumeroPistas 5
+#define NumeroCadeiras 5
+#define NumeroClientes 20
 
 //Semafaros
 sem_t cadeiras_epsera;
@@ -40,11 +40,9 @@ void* cliente(void* arg) {
 
     if (sem_trywait(&cadeiras_epsera) == 0) {
         pthread_mutex_lock(&lock_print);
-        std::cout << "Cliente de id: " << id << " conseguiu pegar uma cadeira" << std::endl;
+            std::cout << "Cliente de id: " << id << " conseguiu pegar uma cadeira" << std::endl;
         pthread_mutex_unlock(&lock_print);
-        
-        sem_post(&cadeiras_epsera);
-        
+            
          bool conseguiuPista = false;
         
         // Percorre todas as pistas tentando pegar uma
@@ -52,6 +50,11 @@ void* cliente(void* arg) {
             for (int i = 0; i < NumeroPistas; i++) {
                 if (sem_trywait(&semafaros_pistas[i]) == 0) {
                     conseguiuPista = true;
+                    sem_post(&cadeiras_epsera);
+
+                    pthread_mutex_lock(&lock_print);
+                        std::cout << "Cliente de id: " << id << " liberou uma cadeira de espera." << std::endl;
+                    pthread_mutex_unlock(&lock_print);
 
                     pthread_mutex_lock(&lock_print);
                         std::cout << "Cliente de id: " << id << " está usando a pista " << i << std::endl;
@@ -73,7 +76,12 @@ void* cliente(void* arg) {
             }
             if(!conseguiuPista){
                 pthread_mutex_lock(&lock_espera_pista);
-                    pthread_cond_wait(&espera_pista,&lock_espera_pista);    
+                    pthread_cond_wait(&espera_pista,&lock_espera_pista);
+
+                    pthread_mutex_lock(&lock_print);
+                        std::cout << "Cliente de id: " << id << " acordou "<< std::endl;
+                    pthread_mutex_unlock(&lock_print);
+                    
                 pthread_mutex_unlock(&lock_espera_pista);
             }
         }
