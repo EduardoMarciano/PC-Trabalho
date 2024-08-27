@@ -12,6 +12,7 @@
 
 //Semafaros
 sem_t cadeiras_epsera;
+sem_t funcionario_levanta_pinos;
 sem_t semafaros_pistas[NumeroPistas];
 sem_t semafaros_pistas_pinos[NumeroPistas];
 
@@ -21,17 +22,40 @@ pthread_cond_t espera_pista = PTHREAD_COND_INITIALIZER;
 //Locks
 pthread_mutex_t lock_print = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t lock_espera_pista = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t lock_acesso_dupla[NumeroPistas] = PTHREAD_MUTEX_INITIALIZER; 
 
 void* funcionario(void* arg) {
+    
     pthread_mutex_lock(&lock_print);
         std::cout <<"Funcionário iniciou seu expediente." <<std::endl;
     pthread_mutex_unlock(&lock_print);
     
+    while (true) {
+    sem_wait(&funcionario_levanta_pinos);
+    }
     sleep(1);
+}
+
+void utilizaPista(int id, int i){
+    pthread_mutex_lock(&lock_acesso_dupla[i]);
+
+        sem_wait(&semafaros_pistas_pinos[i]);
+        pthread_mutex_lock(&lock_print);
+            std::cout << "Cliente de id: " << id << " faz primeiro lançamento na pista de número: "<< i <<"."<< std::endl;
+        pthread_mutex_unlock(&lock_print);
+
+        sem_post(&funcionario_levanta_pinos);
+
+        sem_wait(&semafaros_pistas_pinos[i]);
+        pthread_mutex_lock(&lock_print);
+            std::cout << "Cliente de id: " << id << " faz segundo lançamento na pista de número: "<< i <<"."<< std::endl;
+        pthread_mutex_unlock(&lock_print);
+
+        sem_post(&funcionario_levanta_pinos);
     
-    pthread_mutex_lock(&lock_print);
-        std::cout <<"Funcionário terminou seu expediente." <<std::endl;
-    pthread_mutex_unlock(&lock_print);
+    pthread_mutex_unlock(&lock_acesso_dupla[i]);
+    
+    sleep(2);
 }
 
 
@@ -54,16 +78,13 @@ void* cliente(void* arg) {
 
                     pthread_mutex_lock(&lock_print);
                         std::cout << "Cliente de id: " << id << " liberou uma cadeira de espera." << std::endl;
-                    pthread_mutex_unlock(&lock_print);
-
-                    pthread_mutex_lock(&lock_print);
                         std::cout << "Cliente de id: " << id << " está usando a pista " << i << std::endl;
                     pthread_mutex_unlock(&lock_print);
 
-                    sleep(2);
+                    utilizaPista(id, i);
 
+                    //Libere um espaço na pista e Avisa um cliente na fila de espera que o espaço está vago.
                     sem_post(&semafaros_pistas[i]);
-
                     pthread_mutex_lock(&lock_espera_pista);
                         pthread_cond_signal(&espera_pista);
                     pthread_mutex_unlock(&lock_espera_pista);
