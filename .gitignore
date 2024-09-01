@@ -30,8 +30,3 @@
 *.exe
 *.out
 *.app
-
-# Rascunhos
-barbeiro.c
-canibais.c
-teste
