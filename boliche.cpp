@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <semaphore.h>
 
+//Constantes
 #define NumeroPistas 3
 #define NumeroCadeiras 5
 #define NumeroClientes 20
@@ -14,25 +15,28 @@
 int pistasParaLevantarPinos[NumeroPistas] = {0};
 
 //Semafaros
+// Semafaro para controlar o acesso as cadeiras de espera
 sem_t cadeiras_espera;
+// Semafaro para indicar quando o funcionário deve checar os pinos
 sem_t funcionario_levanta_pinos;
+// Semafaros para controlar o acesso as pistas
 sem_t semafaros_pistas[NumeroPistas];
+// Semafaros para controlar o estado dos pinos de uma dada pista
 sem_t semafaros_pistas_pinos[NumeroPistas];
 
 //Variáveis de Condição
+// Variável de Condição para não causar espera ocupada do cliente que está na cadeira de espera.
 pthread_cond_t espera_pista = PTHREAD_COND_INITIALIZER;
 
 //Locks
-//Lock para organizar os prints.
+// Lock para organizar os prints.
 pthread_mutex_t lock_print = PTHREAD_MUTEX_INITIALIZER;
-//Lock acessar a variável de condição para esperar uma pista.
+// Lock acessar a variável de condição para esperar uma pista.
 pthread_mutex_t lock_espera_pista = PTHREAD_MUTEX_INITIALIZER;
-//Lock para uma dupla esperar a outra usar a pista para ela usar.
+// Lock para uma dupla esperar a outra usar a pista para ela usar.
 pthread_mutex_t lock_acesso_dupla[NumeroPistas] = PTHREAD_MUTEX_INITIALIZER;
- //Lock para acessar a variável pistasParaLevantarPinos.
+// Lock para acessar a variável pistasParaLevantarPinos.
 pthread_mutex_t lock_avisa_funcionario = PTHREAD_MUTEX_INITIALIZER;
-
-
 
 void* funcionario(void* arg) {
     while (1) {
@@ -65,12 +69,6 @@ void* funcionario(void* arg) {
     }
 }
 
-/*
-Função que Simula a utilização da Pista de Boliche por um Cliete.
-Um cliete faz dois lançamentos e termina de usar a pista.
-O lançamento só pode ser feito caso os pinoss estejam levantados.
-Um Cliente deve chamar o Funcionário para levantar entre as suas jogadas.
-*/
 void utilizaPista(int id, int i){
     pthread_mutex_lock(&lock_acesso_dupla[i]);
 
@@ -113,6 +111,7 @@ void* cliente(void* arg) {
 
         //Cliente tenta pegar uma cadeira de espera
         if (sem_trywait(&cadeiras_espera) == 0) {
+            //Cenário em que o Cliente consegue alguma cadeira de espera
             pthread_mutex_lock(&lock_print);
                 std::cout << "Cliente de id: " << id << " conseguiu pegar uma cadeira" << std::endl;
             pthread_mutex_unlock(&lock_print);
@@ -128,6 +127,8 @@ void* cliente(void* arg) {
 
                         //Cenário em que consegue pegar uma Pista
                         conseguiuPista = true;
+                        
+                        //Libera uma cadeira de espera
                         sem_post(&cadeiras_espera);
 
                         pthread_mutex_lock(&lock_print);
@@ -137,9 +138,10 @@ void* cliente(void* arg) {
 
                         utilizaPista(id, i);
 
-                        //Libere um espaço na pista e Avisa um cliente na fila de espera que o espaço está vago.
+                        //Libere um espaço na pista e Avisa um cliente nas cadeiras de espera que o espaço está vago.
                         sem_post(&semafaros_pistas[i]);
                         pthread_mutex_lock(&lock_espera_pista);
+                            // Envia um sinal para os clientes nas cadeiras de espera
                             pthread_cond_signal(&espera_pista);
                         pthread_mutex_unlock(&lock_espera_pista);
 
