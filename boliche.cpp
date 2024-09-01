@@ -188,6 +188,9 @@ int main() {
     
     //Inicialização do semáforo para as cadeiras de espera
     sem_init(&cadeiras_espera, 0, NumeroCadeiras);
+    
+    // Inicialização do semáforo para indicar quando o funcionário deve levantar os pinos
+    sem_init(&funcionario_levanta_pinos, 0, 0);
 
     //Criação das multiplas threads
     for (i = 0; i < NumeroClientes; i++) {
