@@ -1,2 +1,2 @@
-## Compilação e Execução
+## Compilação
     g++ boliche.cpp -o .out
